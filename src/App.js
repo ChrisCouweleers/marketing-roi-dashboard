@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart,
@@ -11,6 +11,7 @@ const C = {
   accent: "#06D6A0", accentDim: "rgba(6,214,160,0.12)",
   warn: "#FFD166", danger: "#EF476F", info: "#118AB2", purple: "#8338EC", cyan: "#06B6D4",
   text: "#F1F5F9", muted: "#94A3B8", dim: "#64748B", faint: "#475569",
+  dragOver: "rgba(6,214,160,0.08)", dragBorder: "rgba(6,214,160,0.4)",
 };
 const CH_COLORS = [C.accent, C.info, C.purple, C.warn, C.cyan, C.danger, "#F472B6", "#A78BFA"];
 
@@ -72,6 +73,196 @@ const Tip = ({ active, payload, label, fmt }) => {
     </div>
   );
 };
+
+// ─── Export Helpers ──────────────────────────────────────────────────────────
+
+function exportCSV(months, channels, campaigns, funnel) {
+  let csv = "MARKETING ROI DASHBOARD EXPORT\n\n";
+
+  csv += "MONTHLY PERFORMANCE\n";
+  csv += "Month,Spend,Revenue,Leads,ROAS,CPL\n";
+  months.forEach(m => {
+    const roas = m.spend ? (m.revenue / m.spend).toFixed(2) : "0";
+    const cpl = m.leads ? (m.spend / m.leads).toFixed(2) : "0";
+    csv += `${m.month},${m.spend},${m.revenue},${m.leads},${roas},${cpl}\n`;
+  });
+  csv += `Totals,${sum(months,"spend")},${sum(months,"revenue")},${sum(months,"leads")},,\n\n`;
+
+  csv += "CHANNEL PERFORMANCE\n";
+  csv += "Channel,Spend,Revenue,ROI %\n";
+  channels.forEach(ch => {
+    const roi = ch.spend ? Math.round(((ch.revenue - ch.spend)/ch.spend)*100) : 0;
+    csv += `${ch.name},${ch.spend},${ch.revenue},${roi}%\n`;
+  });
+  csv += "\n";
+
+  csv += "CAMPAIGNS\n";
+  csv += "Campaign,Channel,Spend,Revenue,ROI %,Status\n";
+  campaigns.forEach(cp => {
+    const roi = cp.spend ? Math.round(((cp.revenue - cp.spend)/cp.spend)*100) : 0;
+    csv += `"${cp.name}","${cp.channel}",${cp.spend},${cp.revenue},${roi}%,${cp.status}\n`;
+  });
+  csv += "\n";
+
+  csv += "FUNNEL\n";
+  csv += "Stage,Volume,Conversion Rate\n";
+  funnel.forEach((f,i) => {
+    const rate = i === 0 ? "—" : `${pct(f.value, funnel[i-1].value)}%`;
+    csv += `${f.stage},${f.value},${rate}\n`;
+  });
+
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "marketing-roi-report.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF(months, channels, campaigns, funnel) {
+  const totalSpend = sum(months,"spend");
+  const totalRev = sum(months,"revenue");
+  const totalLeads = sum(months,"leads");
+  const blendedROAS = totalSpend ? (totalRev/totalSpend).toFixed(2) : "0";
+  const avgCPL = totalLeads ? (totalSpend/totalLeads).toFixed(2) : "0";
+
+  const enrichedChannels = channels.map((ch,i) => ({
+    ...ch,
+    roi: ch.spend ? Math.round(((ch.revenue-ch.spend)/ch.spend)*100) : 0,
+  }));
+  const enrichedCampaigns = campaigns.map(cp => ({
+    ...cp,
+    roi: cp.spend ? Math.round(((cp.revenue-cp.spend)/cp.spend)*100) : 0,
+  }));
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Marketing ROI Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:#fff; color:#1a1a2e; padding:48px; max-width:1000px; margin:0 auto; }
+  h1 { font-size:28px; font-weight:800; margin-bottom:4px; color:#0B0F1A; }
+  h2 { font-size:18px; font-weight:700; margin:32px 0 14px; color:#0B0F1A; border-bottom:2px solid #06D6A0; padding-bottom:6px; }
+  .subtitle { color:#64748B; font-size:13px; margin-bottom:32px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:28px; }
+  .kpi { background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:16px; text-align:center; }
+  .kpi-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#64748B; margin-bottom:6px; }
+  .kpi-value { font-size:22px; font-weight:800; color:#0B0F1A; font-family:'JetBrains Mono',monospace; }
+  table { width:100%; border-collapse:collapse; margin:8px 0 20px; font-size:13px; }
+  th { background:#F1F5F9; padding:10px 14px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748B; border-bottom:2px solid #E2E8F0; }
+  td { padding:10px 14px; border-bottom:1px solid #E2E8F0; }
+  td.mono { font-family:'JetBrains Mono',monospace; }
+  .status { font-size:10px; font-weight:600; text-transform:uppercase; padding:2px 8px; border-radius:4px; }
+  .status-active { background:rgba(6,214,160,.12); color:#059669; }
+  .status-completed { background:rgba(131,56,236,.1); color:#7C3AED; }
+  .status-paused { background:rgba(255,209,102,.12); color:#D97706; }
+  .footer { margin-top:40px; padding-top:16px; border-top:1px solid #E2E8F0; font-size:11px; color:#94A3B8; text-align:center; }
+  @media print { body { padding:24px; } .kpi-grid { grid-template-columns:repeat(5,1fr); } }
+</style></head><body>
+<h1>Marketing ROI Report</h1>
+<p class="subtitle">Generated ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-label">Total Revenue</div><div class="kpi-value">${fmt$(totalRev)}</div></div>
+  <div class="kpi"><div class="kpi-label">Total Spend</div><div class="kpi-value">${fmt$(totalSpend)}</div></div>
+  <div class="kpi"><div class="kpi-label">Blended ROAS</div><div class="kpi-value">${blendedROAS}x</div></div>
+  <div class="kpi"><div class="kpi-label">Total Leads</div><div class="kpi-value">${totalLeads.toLocaleString()}</div></div>
+  <div class="kpi"><div class="kpi-label">Avg CPL</div><div class="kpi-value">$${avgCPL}</div></div>
+</div>
+
+<h2>Monthly Performance</h2>
+<table><thead><tr><th>Month</th><th>Spend</th><th>Revenue</th><th>Leads</th><th>ROAS</th><th>CPL</th></tr></thead><tbody>
+${months.map(m => `<tr><td>${m.month}</td><td class="mono">${fmt$(m.spend)}</td><td class="mono">${fmt$(m.revenue)}</td><td class="mono">${(m.leads||0).toLocaleString()}</td><td class="mono">${m.spend?(m.revenue/m.spend).toFixed(2):"—"}x</td><td class="mono">$${m.leads?(m.spend/m.leads).toFixed(2):"—"}</td></tr>`).join("")}
+</tbody></table>
+
+<h2>Channel Performance</h2>
+<table><thead><tr><th>Channel</th><th>Spend</th><th>Revenue</th><th>ROI</th></tr></thead><tbody>
+${enrichedChannels.map(ch => `<tr><td>${ch.name}</td><td class="mono">${fmt$(ch.spend)}</td><td class="mono">${fmt$(ch.revenue)}</td><td class="mono">${ch.roi}%</td></tr>`).join("")}
+</tbody></table>
+
+<h2>Campaign Performance</h2>
+<table><thead><tr><th>Campaign</th><th>Channel</th><th>Spend</th><th>Revenue</th><th>ROI</th><th>Status</th></tr></thead><tbody>
+${enrichedCampaigns.map(c => `<tr><td>${c.name}</td><td>${c.channel}</td><td class="mono">${fmt$(c.spend)}</td><td class="mono">${fmt$(c.revenue)}</td><td class="mono">${c.roi}%</td><td><span class="status status-${c.status}">${c.status}</span></td></tr>`).join("")}
+</tbody></table>
+
+<h2>Marketing Funnel</h2>
+<table><thead><tr><th>Stage</th><th>Volume</th><th>Conversion Rate</th></tr></thead><tbody>
+${funnel.map((f,i) => `<tr><td>${f.stage}</td><td class="mono">${fmtN(f.value)}</td><td class="mono">${i===0?"—":pct(f.value,funnel[i-1].value)+"%"}</td></tr>`).join("")}
+</tbody></table>
+${funnel.length>=2?`<p style="margin-top:10px;font-size:13px;color:#64748B;">Overall conversion (${funnel[0].stage} → ${funnel[funnel.length-1].stage}): <strong style="color:#059669;font-family:'JetBrains Mono',monospace">${pct(funnel[funnel.length-1].value,funnel[0].value)}%</strong></p>`:""}
+
+<div class="footer">Marketing ROI Dashboard — Report generated automatically</div>
+</body></html>`;
+
+  const w = window.open("", "_blank");
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); }, 600);
+}
+
+// ─── Drag & Drop Hook ───────────────────────────────────────────────────────
+
+function useDragReorder(items, setItems) {
+  const dragIdx = useRef(null);
+  const overIdx = useRef(null);
+  const [draggedOver, setDraggedOver] = useState(null);
+
+  const onDragStart = (e, idx) => {
+    dragIdx.current = idx;
+    e.dataTransfer.effectAllowed = "move";
+    // Make drag image slightly transparent
+    if (e.currentTarget) {
+      e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+    }
+  };
+  const onDragOver = (e, idx) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    overIdx.current = idx;
+    setDraggedOver(idx);
+  };
+  const onDragLeave = () => {
+    setDraggedOver(null);
+  };
+  const onDrop = (e, idx) => {
+    e.preventDefault();
+    const from = dragIdx.current;
+    const to = idx;
+    if (from === null || from === to) { setDraggedOver(null); return; }
+    const updated = [...items];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    setItems(updated);
+    dragIdx.current = null;
+    overIdx.current = null;
+    setDraggedOver(null);
+  };
+  const onDragEnd = () => {
+    dragIdx.current = null;
+    overIdx.current = null;
+    setDraggedOver(null);
+  };
+
+  return { draggedOver, onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd };
+}
+
+// ─── Drag Handle Component ──────────────────────────────────────────────────
+
+function DragHandle() {
+  return (
+    <div style={{
+      cursor:"grab", display:"flex", flexDirection:"column", gap:2, padding:"6px 4px",
+      opacity:.4, flexShrink:0, alignItems:"center", justifyContent:"center",
+      transition:"opacity .2s",
+    }}
+    onMouseEnter={e => e.currentTarget.style.opacity="0.8"}
+    onMouseLeave={e => e.currentTarget.style.opacity="0.4"}>
+      <div style={{ display:"flex", gap:2 }}><span style={{ width:3, height:3, borderRadius:"50%", background:C.muted }} /><span style={{ width:3, height:3, borderRadius:"50%", background:C.muted }} /></div>
+      <div style={{ display:"flex", gap:2 }}><span style={{ width:3, height:3, borderRadius:"50%", background:C.muted }} /><span style={{ width:3, height:3, borderRadius:"50%", background:C.muted }} /></div>
+      <div style={{ display:"flex", gap:2 }}><span style={{ width:3, height:3, borderRadius:"50%", background:C.muted }} /><span style={{ width:3, height:3, borderRadius:"50%", background:C.muted }} /></div>
+    </div>
+  );
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DATA INPUT MODE
@@ -136,6 +327,17 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
   const addRow = (arr, setArr, template) => setArr([...arr, template]);
   const removeRow = (arr, setArr, idx) => { if(arr.length>1){ const n=[...arr]; n.splice(idx,1); setArr(n); }};
 
+  const monthsDrag = useDragReorder(months, setMonths);
+  const channelsDrag = useDragReorder(channels, setChannels);
+  const campaignsDrag = useDragReorder(campaigns, setCampaigns);
+  const funnelDrag = useDragReorder(funnel, setFunnel);
+
+  const dragRowStyle = (drag, i) => ({
+    background: drag.draggedOver === i ? C.dragOver : "transparent",
+    borderTop: drag.draggedOver === i ? `2px solid ${C.dragBorder}` : "2px solid transparent",
+    transition: "background .15s, border .15s",
+  });
+
   const tabs = [
     { id:"monthly", label:"Monthly Data", icon:"📅" },
     { id:"channels", label:"Channels", icon:"📡" },
@@ -153,8 +355,8 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
         <div>
           <div style={{ fontSize:14, fontWeight:700, color:C.text, marginBottom:4 }}>Enter your marketing data to generate your dashboard</div>
           <div style={{ fontSize:13, color:C.muted, lineHeight:1.6 }}>
-            Fill in each section using the tabs below. Sample data is pre-loaded — replace it with your real numbers. 
-            You can add or remove rows as needed, then click <strong style={{ color:C.accent }}>Generate Dashboard</strong> when ready.
+            Fill in each section using the tabs below. Sample data is pre-loaded — replace it with your real numbers.
+            You can add, remove, or <strong style={{ color:C.accent }}>drag to reorder</strong> rows, then click <strong style={{ color:C.accent }}>Generate Dashboard</strong> when ready.
           </div>
         </div>
       </div>
@@ -173,17 +375,19 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
 
       {/* Monthly */}
       {tab === "monthly" && (
-        <SectionCard title="Monthly Performance Data" subtitle="Enter spend, revenue, and leads for each reporting month"
+        <SectionCard title="Monthly Performance Data" subtitle="Enter spend, revenue, and leads for each reporting month. Drag rows to reorder."
           action={<AddBtn onClick={() => addRow(months, setMonths, { month:"", spend:0, revenue:0, leads:0 })} label="+ Add Month" />}>
-          {/* Column headers */}
-          <div style={{ display:"flex", gap:10, marginBottom:8, paddingRight:38 }}>
+          <div style={{ display:"flex", gap:10, marginBottom:8, paddingLeft:24, paddingRight:38 }}>
             {["Month","Spend ($)","Revenue ($)","Leads"].map((h,i) => (
               <div key={i} style={{ flex:1, fontSize:10, fontWeight:700, color:C.faint, textTransform:"uppercase", letterSpacing:".06em" }}>{h}</div>
             ))}
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             {months.map((m, i) => (
-              <div key={i} style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <div key={i} draggable onDragStart={e=>monthsDrag.onDragStart(e,i)} onDragOver={e=>monthsDrag.onDragOver(e,i)}
+                onDragLeave={monthsDrag.onDragLeave} onDrop={e=>monthsDrag.onDrop(e,i)} onDragEnd={monthsDrag.onDragEnd}
+                style={{ display:"flex", gap:10, alignItems:"center", borderRadius:8, padding:"4px 0", ...dragRowStyle(monthsDrag,i) }}>
+                <DragHandle />
                 <div style={{ flex:1 }}><input style={inputStyle} value={m.month} placeholder="e.g. Jan" onChange={e => updateRow(months, setMonths, i, "month", e.target.value)} onFocus={focusRing} onBlur={blurRing} /></div>
                 <div style={{ flex:1 }}><input style={inputStyle} value={m.spend} type="number" placeholder="50000" onChange={e => updateRow(months, setMonths, i, "spend", e.target.value===""?"":Number(e.target.value))} onFocus={focusRing} onBlur={blurRing} /></div>
                 <div style={{ flex:1 }}><input style={inputStyle} value={m.revenue} type="number" placeholder="200000" onChange={e => updateRow(months, setMonths, i, "revenue", e.target.value===""?"":Number(e.target.value))} onFocus={focusRing} onBlur={blurRing} /></div>
@@ -197,16 +401,19 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
 
       {/* Channels */}
       {tab === "channels" && (
-        <SectionCard title="Channel Performance" subtitle="Enter total spend and revenue per marketing channel"
+        <SectionCard title="Channel Performance" subtitle="Enter total spend and revenue per marketing channel. Drag rows to reorder."
           action={<AddBtn onClick={() => addRow(channels, setChannels, { name:"", spend:0, revenue:0 })} label="+ Add Channel" />}>
-          <div style={{ display:"flex", gap:10, marginBottom:8, paddingRight:38 }}>
+          <div style={{ display:"flex", gap:10, marginBottom:8, paddingLeft:24, paddingRight:38 }}>
             {["Channel Name","Spend ($)","Revenue ($)"].map((h,i) => (
               <div key={i} style={{ flex:1, fontSize:10, fontWeight:700, color:C.faint, textTransform:"uppercase", letterSpacing:".06em" }}>{h}</div>
             ))}
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             {channels.map((ch, i) => (
-              <div key={i} style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <div key={i} draggable onDragStart={e=>channelsDrag.onDragStart(e,i)} onDragOver={e=>channelsDrag.onDragOver(e,i)}
+                onDragLeave={channelsDrag.onDragLeave} onDrop={e=>channelsDrag.onDrop(e,i)} onDragEnd={channelsDrag.onDragEnd}
+                style={{ display:"flex", gap:10, alignItems:"center", borderRadius:8, padding:"4px 0", ...dragRowStyle(channelsDrag,i) }}>
+                <DragHandle />
                 <div style={{ flex:1 }}><input style={inputStyle} value={ch.name} placeholder="e.g. Paid Search" onChange={e => updateRow(channels, setChannels, i, "name", e.target.value)} onFocus={focusRing} onBlur={blurRing} /></div>
                 <div style={{ flex:1 }}><input style={inputStyle} value={ch.spend} type="number" onChange={e => updateRow(channels, setChannels, i, "spend", e.target.value===""?"":Number(e.target.value))} onFocus={focusRing} onBlur={blurRing} /></div>
                 <div style={{ flex:1 }}><input style={inputStyle} value={ch.revenue} type="number" onChange={e => updateRow(channels, setChannels, i, "revenue", e.target.value===""?"":Number(e.target.value))} onFocus={focusRing} onBlur={blurRing} /></div>
@@ -219,16 +426,20 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
 
       {/* Campaigns */}
       {tab === "campaigns" && (
-        <SectionCard title="Campaign Details" subtitle="Add individual campaigns with their performance data"
+        <SectionCard title="Campaign Details" subtitle="Add individual campaigns with their performance data. Drag to reorder."
           action={<AddBtn onClick={() => addRow(campaigns, setCampaigns, { name:"", channel:"", spend:0, revenue:0, status:"active" })} label="+ Add Campaign" />}>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
             {campaigns.map((cp, i) => (
-              <div key={i} style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", background:C.cardAlt, borderRadius:10, padding:"12px 14px", border:`1px solid ${C.border}` }}>
-                <div style={{ flex:"2 1 150px", minWidth:0 }}><InputField label="Campaign Name" value={cp.name} onChange={v => updateRow(campaigns, setCampaigns, i, "name", v)} placeholder="e.g. Q4 Launch" /></div>
-                <div style={{ flex:"1 1 110px", minWidth:0 }}><InputField label="Channel" value={cp.channel} onChange={v => updateRow(campaigns, setCampaigns, i, "channel", v)} placeholder="e.g. Email" /></div>
-                <div style={{ flex:"1 1 90px", minWidth:0 }}><InputField label="Spend ($)" value={cp.spend} onChange={v => updateRow(campaigns, setCampaigns, i, "spend", v)} type="number" /></div>
-                <div style={{ flex:"1 1 90px", minWidth:0 }}><InputField label="Revenue ($)" value={cp.revenue} onChange={v => updateRow(campaigns, setCampaigns, i, "revenue", v)} type="number" /></div>
-                <div style={{ flex:"1 1 90px", minWidth:0 }}>
+              <div key={i} draggable onDragStart={e=>campaignsDrag.onDragStart(e,i)} onDragOver={e=>campaignsDrag.onDragOver(e,i)}
+                onDragLeave={campaignsDrag.onDragLeave} onDrop={e=>campaignsDrag.onDrop(e,i)} onDragEnd={campaignsDrag.onDragEnd}
+                style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", background: campaignsDrag.draggedOver===i ? C.dragOver : C.cardAlt,
+                  borderRadius:10, padding:"12px 14px", border: campaignsDrag.draggedOver===i ? `1px solid ${C.dragBorder}` : `1px solid ${C.border}`, transition:"all .15s" }}>
+                <DragHandle />
+                <div style={{ flex:"2 1 140px", minWidth:0 }}><InputField label="Campaign Name" value={cp.name} onChange={v => updateRow(campaigns, setCampaigns, i, "name", v)} placeholder="e.g. Q4 Launch" /></div>
+                <div style={{ flex:"1 1 100px", minWidth:0 }}><InputField label="Channel" value={cp.channel} onChange={v => updateRow(campaigns, setCampaigns, i, "channel", v)} placeholder="e.g. Email" /></div>
+                <div style={{ flex:"1 1 85px", minWidth:0 }}><InputField label="Spend ($)" value={cp.spend} onChange={v => updateRow(campaigns, setCampaigns, i, "spend", v)} type="number" /></div>
+                <div style={{ flex:"1 1 85px", minWidth:0 }}><InputField label="Revenue ($)" value={cp.revenue} onChange={v => updateRow(campaigns, setCampaigns, i, "revenue", v)} type="number" /></div>
+                <div style={{ flex:"1 1 85px", minWidth:0 }}>
                   <label style={inputLabel}>Status</label>
                   <select value={cp.status} onChange={e => updateRow(campaigns, setCampaigns, i, "status", e.target.value)}
                     style={{ ...inputStyle, cursor:"pointer", appearance:"auto" }} onFocus={focusRing} onBlur={blurRing}>
@@ -246,16 +457,19 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
 
       {/* Funnel */}
       {tab === "funnel" && (
-        <SectionCard title="Marketing Funnel Stages" subtitle="Enter the volume at each funnel stage from top (widest) to bottom (narrowest)"
+        <SectionCard title="Marketing Funnel Stages" subtitle="Enter the volume at each funnel stage from top (widest) to bottom (narrowest). Drag to reorder."
           action={<AddBtn onClick={() => addRow(funnel, setFunnel, { stage:"", value:0 })} label="+ Add Stage" />}>
-          <div style={{ display:"flex", gap:10, marginBottom:8, paddingRight:38 }}>
+          <div style={{ display:"flex", gap:10, marginBottom:8, paddingLeft:24, paddingRight:38 }}>
             {["Stage Name","Volume"].map((h,i) => (
               <div key={i} style={{ flex:1, fontSize:10, fontWeight:700, color:C.faint, textTransform:"uppercase", letterSpacing:".06em" }}>{h}</div>
             ))}
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             {funnel.map((f, i) => (
-              <div key={i} style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <div key={i} draggable onDragStart={e=>funnelDrag.onDragStart(e,i)} onDragOver={e=>funnelDrag.onDragOver(e,i)}
+                onDragLeave={funnelDrag.onDragLeave} onDrop={e=>funnelDrag.onDrop(e,i)} onDragEnd={funnelDrag.onDragEnd}
+                style={{ display:"flex", gap:10, alignItems:"center", borderRadius:8, padding:"4px 0", ...dragRowStyle(funnelDrag,i) }}>
+                <DragHandle />
                 <div style={{ flex:1 }}><input style={inputStyle} value={f.stage} placeholder="e.g. Impressions" onChange={e => updateRow(funnel, setFunnel, i, "stage", e.target.value)} onFocus={focusRing} onBlur={blurRing} /></div>
                 <div style={{ flex:1 }}><input style={inputStyle} value={f.value} type="number" placeholder="100000" onChange={e => updateRow(funnel, setFunnel, i, "value", e.target.value===""?"":Number(e.target.value))} onFocus={focusRing} onBlur={blurRing} /></div>
                 <RemoveBtn onClick={() => removeRow(funnel, setFunnel, i)} />
@@ -263,7 +477,7 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
             ))}
           </div>
           <div style={{ marginTop:14, padding:"10px 14px", borderRadius:8, background:"rgba(255,209,102,.06)", border:`1px solid rgba(255,209,102,.12)`, fontSize:12, color:C.muted }}>
-            💡 <strong style={{ color:C.warn }}>Tip:</strong> Order stages from top of funnel (e.g. Impressions) to bottom (e.g. Closed Won). Each stage volume should generally be smaller than the one above it.
+            💡 <strong style={{ color:C.warn }}>Tip:</strong> Order stages from top of funnel (e.g. Impressions) to bottom (e.g. Closed Won). Drag the ⠿ handle to reorder.
           </div>
         </SectionCard>
       )}
@@ -305,6 +519,66 @@ function KPI({ title, value, change, icon, color=C.accent }) {
             {pos?"▲":"▼"} {Math.abs(parseFloat(change))}%
           </span>
           <span style={{ color:C.dim, fontSize:11 }}>vs prior period</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExportMenu({ months, channels, campaigns, funnel }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const btnBase = {
+    display:"flex", alignItems:"center", gap:10, width:"100%", padding:"11px 16px",
+    background:"transparent", border:"none", color:C.text, fontSize:13, fontWeight:500,
+    cursor:"pointer", borderRadius:8, fontFamily:"'DM Sans',sans-serif", textAlign:"left",
+    transition:"background .15s",
+  };
+
+  return (
+    <div ref={ref} style={{ position:"relative" }}>
+      <button onClick={() => setOpen(!open)} style={{
+        background:`linear-gradient(135deg, ${C.accent}, #04B890)`, color:C.bg, border:"none",
+        borderRadius:9, padding:"8px 18px", fontSize:12, fontWeight:700, cursor:"pointer",
+        fontFamily:"'DM Sans',sans-serif", display:"flex", alignItems:"center", gap:6,
+      }}>
+        📤 Export Report <span style={{ fontSize:10, opacity:.7 }}>▼</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position:"absolute", top:"calc(100% + 6px)", right:0, width:240,
+          background:C.card, border:`1px solid ${C.border}`, borderRadius:12,
+          boxShadow:"0 12px 40px rgba(0,0,0,.5)", zIndex:100, overflow:"hidden", padding:6,
+        }}>
+          <button style={btnBase}
+            onMouseEnter={e => e.currentTarget.style.background = C.cardHover}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            onClick={() => { exportPDF(months,channels,campaigns,funnel); setOpen(false); }}>
+            <span style={{ fontSize:18 }}>📄</span>
+            <div>
+              <div style={{ fontWeight:600 }}>Export as PDF</div>
+              <div style={{ fontSize:11, color:C.dim }}>Print-ready formatted report</div>
+            </div>
+          </button>
+          <div style={{ height:1, background:C.border, margin:"2px 8px" }} />
+          <button style={btnBase}
+            onMouseEnter={e => e.currentTarget.style.background = C.cardHover}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+            onClick={() => { exportCSV(months,channels,campaigns,funnel); setOpen(false); }}>
+            <span style={{ fontSize:18 }}>📊</span>
+            <div>
+              <div style={{ fontWeight:600 }}>Export as CSV</div>
+              <div style={{ fontSize:11, color:C.dim }}>Open in Excel or Google Sheets</div>
+            </div>
+          </button>
         </div>
       )}
     </div>
@@ -653,10 +927,13 @@ export default function App() {
         </div>
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
           {mode === "dashboard" && (
-            <button onClick={() => setMode("input")} style={{
-              background:C.card, color:C.muted, border:`1px solid ${C.border}`, borderRadius:9,
-              padding:"8px 16px", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
-            }}>✏️ Edit Data</button>
+            <>
+              <button onClick={() => setMode("input")} style={{
+                background:C.card, color:C.muted, border:`1px solid ${C.border}`, borderRadius:9,
+                padding:"8px 16px", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
+              }}>✏️ Edit Data</button>
+              <ExportMenu months={months} channels={channels} campaigns={campaigns} funnel={funnel} />
+            </>
           )}
           {mode === "input" && (
             <button onClick={() => { setMonths(defaultMonths()); setChannels(defaultChannels()); setCampaigns(defaultCampaigns()); setFunnel(defaultFunnel()); }} style={{
