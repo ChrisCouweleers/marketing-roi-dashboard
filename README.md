@@ -4,7 +4,7 @@
 
 The Marketing ROI Dashboard is an interactive reporting tool that lets you input your marketing performance data and instantly generates an executive-ready dashboard with charts, KPIs, and insights. No logins, no accounts — just open the link and start entering your numbers.
 
-**Live URL:** [https://chrisc-marketing-roi-dashboard.netlify.app/](https://chrisc-marketing-roi-dashboard.netlify.app/)
+**Live URL:** [https://cc-marketing-dashboard.netlify.app/](https://cc-marketing-dashboard.netlify.app/)
 
 ---
 
