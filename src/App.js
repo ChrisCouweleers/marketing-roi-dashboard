@@ -311,6 +311,13 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
       {tab === "monthly" && (
         <SectionCard title="Monthly Performance" subtitle={isMobile ? "Spend, revenue, leads per month" : "Enter spend, revenue, and leads for each reporting month"}
           action={<AddBtn onClick={() => addRow(months, setMonths, { month:"", spend:0, revenue:0, leads:0 })} label="+ Add" />}>
+          {!isMobile && (
+            <div style={{ display:"flex", gap:10, marginBottom:6, paddingLeft:24, paddingRight:38 }}>
+              {["Month","Spend ($)","Revenue ($)","Leads"].map((h,i) => (
+                <div key={i} style={{ flex:1, fontSize:10, fontWeight:700, color:C.faint, textTransform:"uppercase", letterSpacing:".06em" }}>{h}</div>
+              ))}
+            </div>
+          )}
           <div style={{ display:"flex", flexDirection:"column", gap: isMobile?12:4 }}>
             {months.map((m, i) => (
               isMobile ? (
@@ -350,6 +357,13 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
       {tab === "channels" && (
         <SectionCard title="Channel Performance" subtitle="Spend and revenue per channel"
           action={<AddBtn onClick={() => addRow(channels, setChannels, { name:"", spend:0, revenue:0 })} label="+ Add" />}>
+          {!isMobile && (
+            <div style={{ display:"flex", gap:10, marginBottom:6, paddingLeft:24, paddingRight:38 }}>
+              {["Channel Name","Spend ($)","Revenue ($)"].map((h,i) => (
+                <div key={i} style={{ flex:1, fontSize:10, fontWeight:700, color:C.faint, textTransform:"uppercase", letterSpacing:".06em" }}>{h}</div>
+              ))}
+            </div>
+          )}
           <div style={{ display:"flex", flexDirection:"column", gap: isMobile?12:4 }}>
             {channels.map((ch, i) => (
               isMobile ? (
@@ -430,6 +444,13 @@ function DataInputMode({ months, setMonths, channels, setChannels, campaigns, se
       {tab === "funnel" && (
         <SectionCard title="Marketing Funnel Stages" subtitle="Top to bottom, widest to narrowest"
           action={<AddBtn onClick={() => addRow(funnel, setFunnel, { stage:"", value:0 })} label="+ Add" />}>
+          {!isMobile && (
+            <div style={{ display:"flex", gap:10, marginBottom:6, paddingLeft:24, paddingRight:38 }}>
+              {["Stage Name","Volume"].map((h,i) => (
+                <div key={i} style={{ flex:1, fontSize:10, fontWeight:700, color:C.faint, textTransform:"uppercase", letterSpacing:".06em" }}>{h}</div>
+              ))}
+            </div>
+          )}
           <div style={{ display:"flex", flexDirection:"column", gap: isMobile?10:4 }}>
             {funnel.map((f, i) => (
               isMobile ? (
