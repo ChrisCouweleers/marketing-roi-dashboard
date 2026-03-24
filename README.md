@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Marketing ROI Dashboard is an interactive reporting tool that lets you input your marketing performance data and instantly generates an executive-ready dashboard with charts, KPIs, and insights. No logins, no accounts — just open the link and start entering your numbers.
+The Marketing ROI Dashboard is an interactive reporting tool for marketing teams. Enter your performance data, set goals, add competitor benchmarks, and instantly generate an executive-ready dashboard with charts, KPIs, forecasts, and insights. No logins, no accounts — just open the link and start.
 
 **Live URL:** [https://marketing-roi-dashboard.netlify.app/](https://marketing-roi-dashboard.netlify.app/)
 
@@ -10,92 +10,107 @@ The Marketing ROI Dashboard is an interactive reporting tool that lets you input
 
 ## Getting Started
 
-When you open the dashboard, you'll land on the **Data Input** screen. Sample data is pre-loaded so you can see how everything works before entering your own numbers.
-
-### Entering Your Data
-
-The input screen has four tabs across the top:
-
-**📅 Monthly Data**
-Enter one row per reporting month. Each row needs:
-- **Month** — a short label (e.g. "Jan", "Feb", "Q1")
-- **Spend ($)** — total marketing spend for that month
-- **Revenue ($)** — attributed revenue for that month
-- **Leads** — number of leads generated
-
-**📡 Channels**
-Enter one row per marketing channel. Each row needs:
-- **Channel Name** — e.g. "Paid Search", "Email", "Social Media"
-- **Spend ($)** — total spend on that channel
-- **Revenue ($)** — total revenue attributed to that channel
-
-**🚀 Campaigns**
-Enter one row per campaign. Each row needs:
-- **Campaign Name** — the name of the campaign
-- **Channel** — which channel(s) it ran on
-- **Spend ($)** — campaign budget spent
-- **Revenue ($)** — revenue attributed to the campaign
-- **Status** — select Active, Completed, or Paused
-
-**🔽 Funnel**
-Enter your marketing funnel stages from top to bottom (widest to narrowest). Each row needs:
-- **Stage Name** — e.g. "Impressions", "Clicks", "Leads", "MQLs", "SQLs", "Closed Won"
-- **Volume** — the number of people/actions at that stage
-
-### Adding & Removing Rows
-- Click the green **+ Add** button in each section to add a new row
-- Click the red **×** button next to any row to remove it
-- You need at least one row in each section
-
-### Generating the Dashboard
-Once your data is entered, click the green **Generate Dashboard →** button at the bottom. Your dashboard will be calculated and displayed instantly.
+Open the dashboard and you'll land on the **Data Input** screen. Sample data is pre-loaded so you can explore everything before entering your own numbers. When you're ready, replace the sample data, then click **Generate Dashboard**.
 
 ---
 
-## Reading the Dashboard
+## Entering Your Data
 
-The dashboard has four tabs:
+The input screen has six tabs:
+
+### 📅 Monthly Data
+One row per reporting month. Fields: **Month**, **Spend ($)**, **Revenue ($)**, **Leads**, and an optional **Note** for annotating key events (e.g., "Black Friday push" or "New landing pages launched"). Notes show up as markers on the dashboard charts.
+
+### 📡 Channels
+One row per marketing channel. Fields: **Channel Name**, **Spend ($)**, **Revenue ($)**.
+
+### 🚀 Campaigns
+One row per campaign. Fields: **Campaign Name**, **Channel**, **Spend ($)**, **Revenue ($)**, **Status** (Active / Completed / Paused).
+
+### 🔽 Funnel
+Your marketing funnel stages from top to bottom (widest to narrowest). Fields: **Stage Name**, **Volume**. Each stage should generally have a smaller number than the one above it.
+
+### 🎯 Goals
+Set performance targets for five key metrics: **Revenue Target**, **Budget Cap**, **Target ROAS**, **Lead Target**, and **Target CPL**. These appear as progress bars on the dashboard KPI cards. Leave any field blank to hide that target.
+
+### ⚔️ Competitors
+Pre-filled with Industry Average, Top Performer, and a sample competitor. Each entry has: **Name**, **ROAS**, **CPL ($)**, **Conv. Rate (%)**, and **ROI (%)**. Edit the defaults to match your market, or add new competitors. These are compared against your metrics on the Benchmarks dashboard tab.
+
+### Working with Rows
+- Click **+ Add** to add a new row in any section
+- Click the **×** button to remove a row
+- **Desktop:** Drag the ⠿ handle on the left to reorder rows
+- **Mobile:** Use the **▲▼** arrows to reorder rows
+
+---
+
+## Dashboard Views
+
+After clicking **Generate Dashboard**, you'll see six tabs:
 
 ### Overview
-The main executive summary showing:
-- **KPI cards** at the top — Total Revenue, Total Spend, Blended ROAS, Total Leads, and Average CPL. Each card shows a percentage change comparing the second half of your data to the first half.
-- **Revenue vs. Spend chart** — an area chart showing both metrics over time
-- **Budget Allocation** — a donut chart showing how spend is distributed across channels
-- **ROAS Trend** — a line chart tracking return on ad spend month over month
-- **Lead Generation & CPL** — a combined bar/line chart showing lead volume alongside cost per lead
+The main executive summary. Includes five animated KPI cards (Total Revenue, Total Spend, Blended ROAS, Total Leads, Avg CPL) with period-over-period change indicators and goal progress bars. Below the KPIs you'll find a **Date Range** filter to zoom into specific months, a Revenue vs. Spend area chart (with 📌 pins where you added monthly notes), a Budget Allocation donut chart, a ROAS Trend line chart, and a Lead Generation & CPL combo chart.
 
-### Channel Performance
-- **ROI Comparison** — a horizontal bar chart ranking every channel by ROI percentage
-- **Channel cards** — detailed cards for each channel showing spend, revenue, and a visual ROI progress bar
+### Forecasting
+Project your revenue, spend, and leads into the future. Choose a horizon of **3, 6, 9, or 12 months** using the buttons at the top. The chart shows your actual data as solid lines transitioning into dashed projected lines (calculated using linear regression). Summary cards below show projected totals for the selected period.
+
+### Channels
+A horizontal bar chart ranking every channel by ROI percentage, plus detailed cards for each channel showing spend, revenue, and a visual ROI progress bar.
 
 ### Campaigns
-- **Campaign table** — every campaign listed with spend, revenue, ROI bar, and status badge
-- **Summary cards** — active campaign count, average ROI, best-performing campaign, and total pipeline value
+A full campaign table (or cards on mobile) with spend, revenue, ROI bars, and status badges. Summary cards show active campaign count, average ROI, best performer, and total pipeline value.
 
-### Funnel Analysis
-- **Visual funnel** — a tapered visualization showing volume at each stage
-- **Conversion rates** — stage-to-stage conversion percentages with progress bars
-- **Overall conversion** — the end-to-end conversion rate from your first stage to your last
+### Funnel
+A tapered funnel visualization with stage-to-stage conversion rates and an overall end-to-end conversion metric.
+
+### Benchmarks
+A comparison table showing your ROAS, CPL, Conversion Rate, and ROI against every competitor you entered. The best performer in each metric gets a 🏆. Below the table, scorecards show whether you're outperforming or trailing the competitor average for each metric.
+
+### Notes & Annotations
+Every dashboard tab has a **Notes & Annotations** section at the bottom. Click **+ Add Note** to attach freeform observations to any section (e.g., "Revenue spike driven by holiday campaign"). Notes are tied to the tab you're viewing.
+
+---
+
+## Exporting Your Report
+
+From the dashboard view, click the green **📤 Export** button in the header. Two options:
+
+- **PDF** — Opens a clean, print-formatted report in a new tab with your browser's print dialog. Save as PDF or send to a printer.
+- **CSV** — Downloads a spreadsheet file with all your data organized by section, ready to open in Excel or Google Sheets. Includes monthly notes.
 
 ---
 
 ## Tips for Best Results
 
-- **Be consistent with time periods.** If your monthly data covers Jul–Feb, make sure your channel and campaign numbers reflect the same period.
-- **Funnel stages should decrease.** Each stage should generally have a smaller number than the one above it. If they don't, the conversion rates will show values over 100%.
-- **Use the sample data first.** Click through the generated dashboard with the pre-loaded sample data to understand what each chart shows before entering your own.
-- **Data is not saved.** Each person enters their own data each session. If you refresh the page, you'll start fresh with sample data again.
+- **Be consistent with time periods.** If your monthly data covers Jul–Feb, make sure your channel and campaign numbers reflect the same window.
+- **Funnel stages should decrease.** Each stage should generally have a smaller number than the one above it.
+- **Use notes liberally.** Annotating months with context ("budget cut", "new campaign launched") makes the dashboard far more useful when presenting to stakeholders.
+- **Set realistic goals.** The progress bars work best when targets are achievable — if everything is at 10%, the bars won't be very informative.
+- **Update competitor data periodically.** Benchmarks are only useful if they reflect current market conditions.
+- **Data is not saved.** Each session starts fresh with sample data. This is by design for a shared team tool.
 
 ---
 
 ## Editing Your Data
 
-From the dashboard view, click the **✏️ Edit Data** button in the top-right corner to go back to the input screen. Your previously entered data will still be there — make your changes and click **Generate Dashboard →** again.
-
-To start over entirely, click **↺ Reset to Sample** to restore the original sample data.
+From the dashboard, click **✏️ Edit** in the header to return to the input screen with your data intact. Make changes and click **Generate Dashboard** again. To start completely fresh, click **↺ Reset** to restore all sample data.
 
 ---
 
-## Questions or Updates
+## Mobile Support
 
-For changes to the dashboard itself (new charts, different metrics, design tweaks), contact the project owner to request an update.
+The dashboard is fully responsive. On phones, KPI cards become a swipeable horizontal row, grids stack to single columns, campaign tables become cards, and drag-and-drop reordering is replaced with ▲▼ arrow buttons.
+
+---
+
+## Tech Stack
+
+- React 18 with recharts for data visualization
+- No backend or database — all calculations are client-side
+- Hosted on Netlify with automatic deploys from GitHub
+
+---
+
+## Updating the Dashboard
+
+To request changes (new charts, metrics, design tweaks), describe what you need and update the `src/App.js` file on GitHub. Netlify auto-deploys within about a minute.
