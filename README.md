@@ -103,14 +103,6 @@ The dashboard is fully responsive. On phones, KPI cards become a swipeable horiz
 
 ---
 
-## Tech Stack
-
-- React 18 with recharts for data visualization
-- No backend or database — all calculations are client-side
-- Hosted on Netlify with automatic deploys from GitHub
-
----
-
 ## Updating the Dashboard
 
 To request changes (new charts, metrics, design tweaks), describe what you need and update the `src/App.js` file on GitHub. Netlify auto-deploys within about a minute.
