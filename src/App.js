@@ -402,11 +402,12 @@ function DashboardNotes({notes,setNotes,currentTab,isMobile}){
   );
 }
 
-function DashboardView({months,channels,campaigns,funnel,goals,competitors,dashNotes,setDashNotes}){
+function DashboardView({months,channels,campaigns,funnel,goals,competitors,dashNotes,setDashNotes,onEdit}){
   const{isMobile,isTablet}=useScreen();
   const[tab,setTab]=useState("overview");
   const[range,setRange]=useState([0,months.length-1]);
   const[forecastN,setForecastN]=useState(3);
+  const[showWelcome,setShowWelcome]=useState(true);
 
   const filteredMonths=months.slice(range[0],range[1]+1);
   const enrichedMonths=filteredMonths.map(m=>({...m,roas:m.spend?+(m.revenue/m.spend).toFixed(2):0,cpl:m.leads?+(m.spend/m.leads).toFixed(2):0}));
@@ -452,8 +453,83 @@ function DashboardView({months,channels,campaigns,funnel,goals,competitors,dashN
 
   return(
     <div>
-      <div style={{display:"flex",gap:4,marginBottom:24,flexWrap:"wrap"}}>
-        {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:isMobile?"7px 10px":"9px 16px",fontSize:isMobile?11:13,fontWeight:600,cursor:"pointer",background:tab===t.id?C.card:"transparent",color:tab===t.id?C.accent:C.dim,border:tab===t.id?`1px solid ${C.border}`:"1px solid transparent",borderRadius:9,fontFamily:"'DM Sans',sans-serif",flex:isMobile?"1 1 auto":"none"}}>{t.label}</button>)}
+      {showWelcome&&(
+        <div style={{
+          background:`linear-gradient(135deg, ${C.accentDim}, rgba(17,138,178,0.07))`,
+          border:`1px solid ${C.accent}40`,
+          borderRadius:14,
+          padding:isMobile?"14px 14px":"16px 22px",
+          marginBottom:20,
+          display:"flex",
+          alignItems:isMobile?"flex-start":"center",
+          gap:isMobile?12:16,
+          flexDirection:isMobile?"column":"row"
+        }}>
+          <div style={{display:"flex",alignItems:"center",gap:12,flex:1,minWidth:0}}>
+            <div style={{fontSize:26,lineHeight:1,flexShrink:0}}>👋</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:isMobile?13:14,fontWeight:700,color:C.text,marginBottom:3}}>You're viewing sample data</div>
+              <div style={{fontSize:isMobile?11:12,color:C.muted,lineHeight:1.5}}>
+                Click <span style={{color:C.accent,fontWeight:700}}>✏️ Edit Data</span> in the top right to enter your own monthly performance, channels, campaigns, and goals — then come back here to see your real dashboard.
+              </div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0,alignSelf:isMobile?"stretch":"auto",justifyContent:isMobile?"space-between":"flex-end"}}>
+            <button onClick={onEdit} style={{
+              background:`linear-gradient(135deg, ${C.accent}, #04B890)`,
+              color:C.bg,border:"none",borderRadius:9,
+              padding:isMobile?"9px 14px":"10px 18px",
+              fontSize:isMobile?12:13,fontWeight:700,
+              cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+              whiteSpace:"nowrap",flex:isMobile?1:"none"
+            }}>Enter Your Data →</button>
+            <button onClick={()=>setShowWelcome(false)} title="Dismiss" style={{
+              background:"transparent",color:C.faint,border:"none",
+              cursor:"pointer",fontSize:20,padding:"4px 10px",
+              lineHeight:1,fontFamily:"'DM Sans',sans-serif"
+            }}>×</button>
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",gap:6,marginBottom:24,flexWrap:"wrap"}}>
+        {tabs.map(t=>{
+          const isActive=tab===t.id;
+          return(
+            <button
+              key={t.id}
+              onClick={()=>setTab(t.id)}
+              style={{
+                padding:isMobile?"8px 12px":"10px 18px",
+                fontSize:isMobile?11:13,
+                fontWeight:isActive?700:600,
+                cursor:"pointer",
+                background:isActive?C.accentDim:C.cardAlt,
+                color:isActive?C.accent:C.muted,
+                border:`1px solid ${isActive?C.accent+"55":C.border}`,
+                borderRadius:9,
+                fontFamily:"'DM Sans',sans-serif",
+                flex:isMobile?"1 1 auto":"none",
+                transition:"background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease",
+                transform:"translateY(0)",
+                boxShadow:isActive?`0 0 0 3px ${C.accent}14`:"none"
+              }}
+              onMouseEnter={e=>{
+                if(isActive)return;
+                e.currentTarget.style.background=C.cardHover;
+                e.currentTarget.style.color=C.text;
+                e.currentTarget.style.borderColor=C.borderLight;
+                e.currentTarget.style.transform="translateY(-1px)";
+              }}
+              onMouseLeave={e=>{
+                if(isActive)return;
+                e.currentTarget.style.background=C.cardAlt;
+                e.currentTarget.style.color=C.muted;
+                e.currentTarget.style.borderColor=C.border;
+                e.currentTarget.style.transform="translateY(0)";
+              }}
+            >{t.label}</button>
+          );
+        })}
       </div>
 
       {/* ── Overview ──────────────────────────────────────────────────────── */}
@@ -662,7 +738,7 @@ function DashboardView({months,channels,campaigns,funnel,goals,competitors,dashN
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function App(){
   const{isMobile}=useScreen();
-  const[mode,setMode]=useState("input");
+  const[mode,setMode]=useState("dashboard");
   const[months,setMonths]=useState(defaultMonths);
   const[channels,setChannels]=useState(defaultChannels);
   const[campaigns,setCampaigns]=useState(defaultCampaigns);
@@ -684,12 +760,12 @@ export default function App(){
           <div><h1 style={{margin:0,fontSize:isMobile?16:21,fontWeight:800,letterSpacing:"-.02em"}}>Marketing ROI Dashboard</h1>
             <p style={{margin:"1px 0 0",color:C.dim,fontSize:isMobile?10:12}}>{mode==="input"?"Enter your marketing data":"Executive Performance Report"}</p></div></div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {mode==="dashboard"&&<><button onClick={()=>setMode("input")} style={{background:C.card,color:C.muted,border:`1px solid ${C.border}`,borderRadius:9,padding:isMobile?"6px 10px":"8px 16px",fontSize:isMobile?11:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>✏️ Edit</button><ExportMenu months={months} channels={channels} campaigns={campaigns} funnel={funnel}/></>}
+          {mode==="dashboard"&&<><button onClick={()=>setMode("input")} style={{background:C.accentDim,color:C.accent,border:`1px solid ${C.accent}55`,borderRadius:9,padding:isMobile?"6px 10px":"8px 16px",fontSize:isMobile?11:12,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>✏️ Edit Data</button><ExportMenu months={months} channels={channels} campaigns={campaigns} funnel={funnel}/></>}
           {mode==="input"&&<button onClick={()=>{setMonths(defaultMonths());setChannels(defaultChannels());setCampaigns(defaultCampaigns());setFunnel(defaultFunnel());setGoals(defaultGoals());setCompetitors(defaultCompetitors());setDashNotes(defaultDashNotes());}} style={{background:C.card,color:C.muted,border:`1px solid ${C.border}`,borderRadius:9,padding:isMobile?"6px 10px":"8px 16px",fontSize:isMobile?11:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>↺ Reset</button>}
         </div></div>
       <div style={{padding:`24px ${isMobile?"16px":"36px"} 48px`}}>
         {mode==="input"?<DataInputMode months={months} setMonths={setMonths} channels={channels} setChannels={setChannels} campaigns={campaigns} setCampaigns={setCampaigns} funnel={funnel} setFunnel={setFunnel} goals={goals} setGoals={setGoals} competitors={competitors} setCompetitors={setCompetitors} onLaunch={()=>setMode("dashboard")}/>
-        :<DashboardView months={months} channels={channels} campaigns={campaigns} funnel={funnel} goals={goals} competitors={competitors} dashNotes={dashNotes} setDashNotes={setDashNotes}/>}
+        :<DashboardView months={months} channels={channels} campaigns={campaigns} funnel={funnel} goals={goals} competitors={competitors} dashNotes={dashNotes} setDashNotes={setDashNotes} onEdit={()=>setMode("input")}/>}
       </div>
     </div>
   );
